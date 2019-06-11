@@ -1,4 +1,4 @@
-import sys
+import sys, time
 from subprocess import PIPE, Popen
 SUBPROCESS_HAS_TIMEOUT = True
 if sys.version_info < (3, 0):
@@ -39,6 +39,7 @@ class bash(object):
         self.code = self.p.returncode
         return self
 
+
     def __repr__(self):
         return self.value()
 
@@ -58,3 +59,34 @@ class bash(object):
         if self.stdout:
             return self.stdout.strip().decode(encoding='UTF-8')
         return ''
+
+    def print_and_wait(self):
+        """
+        Continuously prints stdout and stderr of the subprocess to stdout in realtime
+        Returns the exit code of the subprocess once the process finishes running.
+        Note that if you do the following you will not see the stdout and stderr from the 
+        subprocess until after the process completes,
+        process = bash('<bash commadn spawning a process>')
+        process.print_and_wait()
+        The process will finish synchronously when bash is called before print_and_wait gets called. 
+        To see the output in realtime do the following,
+        process = bash('<bash commadn spawning a process>', sync=False)
+        process.print_and_wait()
+        """
+        while True:
+            out_line = self.p.stdout.readline().decode()
+            err_line = self.p.stderr.readline().decode()
+            if len(out_line) > 0:
+                print(out_line)
+            elif len(err_line) > 0:
+                print(err_line)
+            elif self.p.poll() is None:
+                time.sleep(.05)
+            else:
+                break
+        
+        exit_code = self.p.poll()
+        print(f'exit code {exit_code} from subprocess')
+        return exit_code
+
+

@@ -1,5 +1,6 @@
 from datetime import datetime
 import unittest
+import io, sys
 
 try:
     from subprocess import TimeoutExpired
@@ -66,3 +67,18 @@ class TestBash(unittest.TestCase):
         self.assertTrue((t2-t1).total_seconds() < 0.5)
         b.sync()
         self.assertEqual(b.stdout, b'1\n')
+
+    def test_print_and_wait(self):
+        b = bash('echo hey', sync=False)
+        # with help from https://stackoverflow.com/a/35779140/3781537
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        b.print_and_wait()
+        what_was_printed = sys.stdout.getvalue()
+        self.assertTrue('hey' in what_was_printed)
+        
+        sys.stdout = io.StringIO()
+        b = bash('./missing_command', sync=False)
+        b.print_and_wait()
+        self.assertTrue('No such file or directory' in sys.stdout.getvalue())
+        sys.stdout = old_stdout
